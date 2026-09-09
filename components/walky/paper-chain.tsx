@@ -518,11 +518,11 @@ export default function PaperChain({
       ref={host}
       className="paper-stage"
       role="img"
-      aria-label={`A paper chain with ${count} walk links. Drag to make it sway.`}
+      aria-label={`A paper chain with ${count} links. Drag to make it sway.`}
     >
       {failed && (
         <p className="canvas-fallback">
-          The paper chain needs WebGL. Your {count} walks are still saved — try
+          The paper chain needs WebGL. Your walks are still saved — try
           the calendar view.
         </p>
       )}
