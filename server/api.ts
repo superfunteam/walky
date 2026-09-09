@@ -52,7 +52,7 @@ export function createApi(store: Store, cfg: Config) {
             configured: !!(
               process.env.CLARK &&
               process.env.ANGIE &&
-              process.env.TEXBELT
+              (process.env.TEXBELT || process.env.TEXTBELT)
             ),
           },
         });

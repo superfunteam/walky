@@ -166,6 +166,27 @@ test('4 pm Central fires at 21 UTC in summer and 22 UTC in winter', async () => 
     assert.equal(result.results.length, 2);
   }
 });
+void test('Textbelt key supports either env spelling and preserves TEXBELT precedence', async () => {
+  for (const credentials of [
+    { TEXBELT: 'legacy-key' },
+    { TEXTBELT: 'alias-key' },
+    { TEXBELT: 'legacy-key', TEXTBELT: 'alias-key' },
+  ]) {
+    const mock = sender();
+    await sendReminders({
+      store: new MemoryStore(),
+      env: { CLARK: smsEnv.CLARK, ANGIE: smsEnv.ANGIE, ...credentials },
+      now: new Date('2026-09-08T21:00:00Z'),
+      send: mock.send,
+    });
+    assert.equal(mock.calls.length, 2);
+    for (const call of mock.calls)
+      assert.equal(
+        (call.body as URLSearchParams).get('key'),
+        credentials.TEXBELT || credentials.TEXTBELT,
+      );
+  }
+});
 test('wrong UTC slot, completed walk and disabled SMS produce no sends', async () => {
   for (const iso of ['2026-09-08T22:00:00Z', '2026-01-08T21:00:00Z']) {
     const mock = sender();
