@@ -30,6 +30,7 @@ export const hash = (value: string) =>
 export const keys = (token: string) => ({
   read: 'r_' + hash(token + ':read'),
   log: 'l_' + hash(token + ':log'),
+  reward: 'rw_' + hash(token + ':reward'),
 });
 const equal = (a: string, b: string) =>
   timingSafeEqual(Buffer.from(hash(a)), Buffer.from(hash(b)));
@@ -84,7 +85,7 @@ export function getToken(request: Request) {
 export function authenticate(
   request: Request,
   cfg: Config,
-  scope: 'owner' | 'read' | 'log' = 'owner',
+  scope: 'owner' | 'read' | 'log' | 'reward' = 'owner',
 ) {
   const token = getToken(request),
     derived = keys(cfg.token);
@@ -92,6 +93,7 @@ export function authenticate(
   if (equal(token, cfg.token)) return 'owner';
   if (scope === 'read' && equal(token, derived.read)) return 'read';
   if (scope === 'log' && equal(token, derived.log)) return 'log';
+  if (scope === 'reward' && equal(token, derived.reward)) return 'reward';
   throw new ApiError(403, 'That connection code cannot perform this action.');
 }
 export function sameOrigin(request: Request) {

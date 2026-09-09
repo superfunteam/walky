@@ -16,12 +16,15 @@ import {
   Heart,
   RotateCcw,
   Sparkles,
+  Flame,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { dayInZone, summarize, type WalkStatus } from '@/lib/walky/dates';
 import CalendarView from '@/components/walky/calendar-view';
 import Settings from '@/components/walky/settings';
 import WalkButtonIcon from '@/components/walky/walk-button-icon';
+import Streaker, { RewardCelebration } from '@/components/walky/streaker';
+import { useStreaker } from '@/components/walky/use-streaker';
 const PaperChain = lazy(() => import('@/components/walky/paper-chain'));
 const STARTER_LINKS = 3;
 const EMPTY = () =>
@@ -37,6 +40,7 @@ export default function Home() {
     [view, setView] = useState('button'),
     [pulse, setPulse] = useState(0),
     [demo, setDemo] = useState(0);
+  const streaker = useStreaker(connected, status, setStatus, setConnected);
   const live = useRef({ status, connected });
   live.current = { status, connected };
   const locked = useRef(false);
@@ -65,7 +69,8 @@ export default function Home() {
   useEffect(() => {
     refresh();
     const saved = localStorage.getItem('walky-view');
-    if (['button', 'calendar', 'chain'].includes(saved || '')) setView(saved!);
+    if (['button', 'calendar', 'chain', 'streaker'].includes(saved || ''))
+      setView(saved!);
     const t = setInterval(() => {
       if (!document.hidden) refresh();
     }, 30000);
@@ -137,6 +142,20 @@ export default function Home() {
     const lifecycle = new AbortController();
     for (const tool of [
       {
+        name: 'next_reward',
+        description:
+          'Read the next private team reward and progress, or null if none exists. Requires a connected browser.',
+        annotations: { readOnlyHint: true },
+        execute: async () => {
+          const response = await fetch('/api/rewards/next', {
+            cache: 'no-store',
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error);
+          return data;
+        },
+      },
+      {
         name: 'walk_status',
         description: 'Read the shared walking status.',
         annotations: { readOnlyHint: true },
@@ -202,7 +221,7 @@ export default function Home() {
         </button>
       </header>
       <Tabs
-        value={view}
+        value={!connected && view === 'streaker' ? 'button' : view}
         onValueChange={(v) => {
           setView(String(v));
           localStorage.setItem('walky-view', String(v));
@@ -212,7 +231,10 @@ export default function Home() {
       >
         <div className="topline">
           <span className="eyebrow">{dateText.toUpperCase()}</span>
-          <TabsList className="view-switch" aria-label="Home view">
+          <TabsList
+            className={`view-switch ${connected ? 'has-streaker' : ''}`}
+            aria-label="Home view"
+          >
             <TabsTrigger value="button">
               <Footprints size={16} /> The button
             </TabsTrigger>
@@ -222,6 +244,11 @@ export default function Home() {
             <TabsTrigger value="chain">
               <Link2 size={16} /> Paper chain
             </TabsTrigger>
+            {connected && (
+              <TabsTrigger value="streaker">
+                <Flame size={16} /> Streaker
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
         {error && (
@@ -396,7 +423,23 @@ export default function Home() {
             </div>
           </section>
         </TabsContent>
+        {connected && (
+          <TabsContent value="streaker">
+            <Streaker
+              model={streaker}
+              status={status}
+              onLog={log}
+              logging={busy || loading}
+            />
+          </TabsContent>
+        )}
       </Tabs>
+      {connected && (
+        <RewardCelebration
+          challenge={streaker.celebration}
+          onClose={streaker.dismissCelebration}
+        />
+      )}
       <footer className="bottomline">
         <span>
           <i />{' '}

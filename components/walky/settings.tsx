@@ -12,6 +12,7 @@ export type SettingsData = {
   connectionCode: string;
   read: string;
   log: string;
+  reward: string;
   reminders: { hour: number; timezone: string; configured: boolean };
 };
 export default function Settings({
@@ -120,6 +121,14 @@ export default function Settings({
                 reads your calendar.
               </p>
               {row('MCP endpoint', `${window.location.origin}/mcp`)}
+              {row(
+                'Next reward feed',
+                `${window.location.origin}/api/rewards/next?key=${data.reward}`,
+              )}
+              <p>
+                The reward link privately reads your next prize and progress.
+                Share it only with integrations you trust.
+              </p>
               <p>MCP uses your connection code as a Bearer token.</p>
             </div>
             <div className="settings-section reminder-note">

@@ -13,6 +13,13 @@ import {
   type Config,
 } from './core';
 import { validDay } from '../lib/walky/dates';
+import {
+  archiveChallenge,
+  challengeFeed,
+  claimReward,
+  completeChallengeItem,
+  createChallenge,
+} from './challenges';
 export function createApi(store: Store, cfg: Config) {
   return (request: Request) =>
     handle(async () => {
@@ -21,6 +28,50 @@ export function createApi(store: Store, cfg: Config) {
         '/api',
       );
       const method = request.method;
+      if (route === '/api/rewards/next' && method === 'GET') {
+        authenticate(request, cfg, 'reward');
+        return json({
+          nextReward: (await challengeFeed(store, cfg)).nextReward,
+        });
+      }
+      if (
+        route === '/api/challenges' &&
+        (method === 'GET' || method === 'POST')
+      ) {
+        authenticate(request, cfg);
+        if (method === 'GET') return json(await challengeFeed(store, cfg));
+        sameOrigin(request);
+        return json(
+          await createChallenge(store, cfg, await body(request)),
+          201,
+        );
+      }
+      const challengeRoute = route.match(
+        /^\/api\/challenges\/([^/]+)(?:\/(claim|items)(?:\/([^/]+))?)?$/,
+      );
+      if (challengeRoute) {
+        authenticate(request, cfg);
+        sameOrigin(request);
+        const [, id, action, itemId] = challengeRoute;
+        if (!action && method === 'DELETE')
+          return json(await archiveChallenge(store, cfg, id));
+        if (action === 'claim' && !itemId && method === 'POST')
+          return json(await claimReward(store, cfg, id));
+        if (
+          action === 'items' &&
+          itemId &&
+          (method === 'POST' || method === 'DELETE')
+        )
+          return json(
+            await completeChallengeItem(
+              store,
+              cfg,
+              id,
+              itemId,
+              method === 'POST',
+            ),
+          );
+      }
       if (route === '/api/household' && method === 'POST') {
         sameOrigin(request);
         const input = await body(request);
