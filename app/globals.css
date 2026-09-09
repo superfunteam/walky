@@ -178,7 +178,7 @@ h1 {
   height: 280px;
   border-radius: 50%;
   background: var(--orange);
-  color: #223f2f;
+  color: #fff;
   border: 1px solid #e36230;
   box-shadow:
     0 10px 0 #d9592c,
@@ -191,32 +191,24 @@ h1 {
     background 0.25s;
   position: relative;
 }
-.walk-button:hover {
+.walk-button:hover:not(:disabled) {
   transform: translateY(-3px) rotate(-2deg);
 }
-.walk-button:active {
+.walk-button:active:not(:disabled) {
   transform: translateY(7px);
   box-shadow:
     0 3px 0 #d9592c,
     0 7px 0 #eeded0;
 }
-.walk-button strong {
-  font-size: 35px;
-  letter-spacing: -1.5px;
-  margin-top: 15px;
-  font-weight: 650;
-}
-.walk-button > span:last-child {
-  font-size: 10px;
-  letter-spacing: 1.3px;
-  font-weight: 700;
-  display: flex;
-  gap: 7px;
-  align-items: center;
-  margin-top: 13px;
-}
 .button-icon {
   display: block;
+  width: 136px;
+  height: 136px;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.walk-button[aria-busy='true'] .button-icon {
+  opacity: 0.55;
 }
 .walk-button.is-done {
   background: var(--yellow);
