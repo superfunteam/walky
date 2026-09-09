@@ -45,4 +45,8 @@ jobs:
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk walky.apk
           sha256sum walky.apk > walky.apk.sha256
-          gh release create "$RELEASE_TAG" walky.apk walky.apk.sha256 --verify-tag --title "Walky ${RELEASE_TAG#v}" --notes-file docs/release-notes.md
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" walky.apk walky.apk.sha256 --clobber
+          else
+            gh release create "$RELEASE_TAG" walky.apk walky.apk.sha256 --verify-tag --title "Walky ${RELEASE_TAG#v}" --notes-file docs/release-notes.md
+          fi
