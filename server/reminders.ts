@@ -5,6 +5,7 @@ export type ReminderEnv = {
   CLARK?: string;
   ANGIE?: string;
   TEXBELT?: string;
+  TEXTBELT?: string;
   SMS_ENABLED?: string;
 };
 type Result = { recipient: string; state: string; textId?: string };
@@ -31,9 +32,10 @@ export async function sendReminders({
   if (hour !== 16) return { date, skipped: 'not-4pm-central', results: [] };
   if (env.SMS_ENABLED === 'false')
     return { date, skipped: 'disabled', results: [] };
-  if (!env.CLARK || !env.ANGIE || !env.TEXBELT)
+  const textbeltKey = env.TEXBELT || env.TEXTBELT;
+  if (!env.CLARK || !env.ANGIE || !textbeltKey)
     throw new Error(
-      'Configure CLARK, ANGIE and TEXBELT in Netlify function environment variables.',
+      'Configure CLARK, ANGIE and TEXBELT (or TEXTBELT) in Netlify function environment variables.',
     );
   for (const phone of [env.CLARK, env.ANGIE])
     if (!/^\+?[1-9]\d{9,14}$/.test(phone))
@@ -70,7 +72,7 @@ export async function sendReminders({
         body: new URLSearchParams({
           phone: env[recipient]!,
           message: roastForDay(date),
-          key: env.TEXBELT,
+          key: textbeltKey,
           sender: 'Walky',
         }),
         signal: AbortSignal.timeout(12000),

@@ -16,7 +16,7 @@ A Netlify-hosted web app and service, plus a small Android APK with a native one
 | `WALKY_TIMEZONE` | `America/Chicago` (default). This calendar is intended for Central time, matching the reminder. |
 | `CLARK` | Clark's phone, preferably `+1` followed by 10 digits; no punctuation. |
 | `ANGIE` | Angie's phone, same format. |
-| `TEXBELT` | Your Textbelt API key. Spelling is intentionally **TEXBELT**. |
+| `TEXBELT` or `TEXTBELT` | Your Textbelt API key. Either spelling works; `TEXBELT` takes precedence if both are set. |
 | `SMS_ENABLED` | `true`; set `false` to pause reminder texts. |
 
 No external database setup is required. Site-wide Netlify Blobs stores one record per walk date with strong consistency. Conditional creation makes repeated taps and concurrent requests count once. Deploy previews use a separate namespace and never send scheduled texts.
