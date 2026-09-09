@@ -101,7 +101,11 @@ Download the APK from [GitHub Releases](https://github.com/superfunteam/walky/re
 
 1. Open Walky. The service address defaults to `https://walky.wims.vc`.
 2. Enter the same `WALKY_TOKEN` connection code.
-3. Tap **Add widget**. Tap the widget once to log a walk. Tap its small wordmark to open the full app.
+3. Choose **App options → Add home-screen widget** at the bottom. Tap the widget once to log a walk. Tap its small wordmark to open the full app. **Connection** is in the same menu.
+
+The orange asterisk launcher icon has separate adaptive background/foreground layers and an Android 13+ monochrome layer. The artwork stays inside the 66dp safe circle of the 108dp foreground, so launcher masks can crop the background without clipping the asterisk. A vector fallback covers legacy icon consumers. The browser favicon uses the same mark.
+
+Opening Connection keeps the current page alive. Saving the same settings does not reload it; changing the service or connection code reconnects. Rotation and screen-size changes resize the WebView without recreating it.
 
 The native widget uses WorkManager to queue offline taps with the **original local date**, retry when connected, and refresh status periodically. A queued walk is explicitly marked pending; it isn't reported as server-saved before sync. The app wraps the web views in a hardened HTTPS-only WebView. It does not cache the entire web app offline. The widget's shared status may lag until its next background refresh; Android can defer background work.
 
@@ -133,6 +137,8 @@ The camera frames the current chain closely. Pinch inside the scene to zoom from
 
 Tap **Enable tilt** on a phone and grant motion access if prompted. The first sensor reading calibrates a comfortable holding position, and rotating between portrait and landscape recalibrates. Tilting changes the chain's gravity with smoothing. On Macs, the same control enables pointer tilt over the scene. Missing or denied sensors fall back to dragging and Breeze. Motion is opt-in for each scene visit, and reduced-motion settings reduce its strength. Sensor permissions, null data, cancellation, pinch limits, and axis changes have automated coverage; physical-phone motion and native trackpad pinch still need device testing.
 
+The home navigation stays in a single row on phones. Visited views remain mounted, preserving the calendar month, challenge drafts, and chain zoom. Scene modules warm during idle time; the chain's animation loop stops while its tab or document is hidden, and resumes without simulating the time spent away. Paper folding updates reusable GPU buffers instead of allocating new geometry on every frame. Mobile rendering uses a lower pixel ratio and shadow-map size.
+
 ## A few easy ideas
 
 - Put an NFC sticker by the front door that opens the private log URL.
@@ -144,4 +150,4 @@ Tap **Enable tilt** on a phone and grant motion access if prompted. The first se
 
 [Netlify Functions](https://docs.netlify.com/build/functions/overview/) · [Blobs and conditional writes](https://docs.netlify.com/build/data-and-storage/netlify-blobs/) · [UTC schedules](https://docs.netlify.com/snippets/functions/scheduled-functions/cron-expression-format/) · [Textbelt API](https://docs.textbelt.com/) · [TRMNL Private Plugins](https://help.trmnl.com/en/articles/9510536-private-plugins)
 
-The supplied walking SVG is preserved in `public/walk.svg` and used on the main button and Android icon. Retain any attribution/license required by its original source when distributing the app.
+The supplied walking SVG is preserved in `public/walk.svg` and used on the main button and Android walk shortcut. Retain any attribution/license required by its original source when distributing the app.

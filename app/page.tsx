@@ -25,7 +25,9 @@ import Settings from '@/components/walky/settings';
 import WalkButtonIcon from '@/components/walky/walk-button-icon';
 import Streaker, { RewardCelebration } from '@/components/walky/streaker';
 import { useStreaker } from '@/components/walky/use-streaker';
-const PaperChain = lazy(() => import('@/components/walky/paper-chain'));
+import { loadPhysics } from '@/lib/walky/physics';
+const loadPaperChain = () => import('@/components/walky/paper-chain');
+const PaperChain = lazy(loadPaperChain);
 const STARTER_LINKS = 3;
 const EMPTY = () =>
   summarize([], dayInZone('America/Chicago'), 'America/Chicago');
@@ -38,6 +40,7 @@ export default function Home() {
     [error, setError] = useState(''),
     [toast, setToast] = useState(''),
     [view, setView] = useState('button'),
+    [chainVisited, setChainVisited] = useState(false),
     [pulse, setPulse] = useState(0),
     [demo, setDemo] = useState(0);
   const streaker = useStreaker(connected, status, setStatus, setConnected);
@@ -69,8 +72,10 @@ export default function Home() {
   useEffect(() => {
     refresh();
     const saved = localStorage.getItem('walky-view');
-    if (['button', 'calendar', 'chain', 'streaker'].includes(saved || ''))
+    if (['button', 'calendar', 'chain', 'streaker'].includes(saved || '')) {
       setView(saved!);
+      setChainVisited(saved === 'chain');
+    }
     const t = setInterval(() => {
       if (!document.hidden) refresh();
     }, 30000);
@@ -80,6 +85,18 @@ export default function Home() {
       window.removeEventListener('focus', refresh);
     };
   }, [refresh]);
+  useEffect(() => {
+    // Warm the large scene modules after the first screen can paint.
+    const warm = () => {
+      void Promise.allSettled([loadPaperChain(), loadPhysics()]);
+    };
+    if ('requestIdleCallback' in window) {
+      const idle = window.requestIdleCallback(warm, { timeout: 2000 });
+      return () => window.cancelIdleCallback(idle);
+    }
+    const timer = setTimeout(warm, 1200);
+    return () => clearTimeout(timer);
+  }, []);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 4500);
@@ -225,7 +242,7 @@ export default function Home() {
         onValueChange={(v) => {
           setView(String(v));
           localStorage.setItem('walky-view', String(v));
-          setDemo(0);
+          if (v === 'chain') setChainVisited(true);
         }}
         className="home-tabs"
       >
@@ -236,13 +253,13 @@ export default function Home() {
             aria-label="Home view"
           >
             <TabsTrigger value="button">
-              <Footprints size={16} /> The button
+              <Footprints size={16} /> Button
             </TabsTrigger>
             <TabsTrigger value="calendar">
               <CalendarDays size={16} /> Calendar
             </TabsTrigger>
             <TabsTrigger value="chain">
-              <Link2 size={16} /> Paper chain
+              <Link2 size={16} /> Chain
             </TabsTrigger>
             {connected && (
               <TabsTrigger value="streaker">
@@ -257,7 +274,7 @@ export default function Home() {
             <button onClick={refresh}>Try again</button>
           </div>
         )}
-        <TabsContent value="button">
+        <TabsContent value="button" keepMounted>
           <section className="button-view">
             <div className="daily-heading">
               <span className="date-label">OUR DAILY DOSE OF OUTSIDE</span>
@@ -327,7 +344,7 @@ export default function Home() {
             </p>
           </section>
         </TabsContent>
-        <TabsContent value="calendar">
+        <TabsContent value="calendar" keepMounted>
           <CalendarView
             status={status}
             busy={busy}
@@ -340,7 +357,7 @@ export default function Home() {
             }}
           />
         </TabsContent>
-        <TabsContent value="chain">
+        <TabsContent value="chain" keepMounted>
           <section className="chain-view">
             <div className="chain-heading">
               <div>
@@ -367,7 +384,13 @@ export default function Home() {
                   </div>
                 }
               >
-                <PaperChain count={demo || chainLinks} pulse={pulse} />
+                {(chainVisited || view === 'chain') && (
+                  <PaperChain
+                    count={demo || chainLinks}
+                    pulse={pulse}
+                    active={view === 'chain'}
+                  />
+                )}
               </Suspense>
               <span className="paper-label">
                 {demo
@@ -424,7 +447,7 @@ export default function Home() {
           </section>
         </TabsContent>
         {connected && (
-          <TabsContent value="streaker">
+          <TabsContent value="streaker" keepMounted>
             <Streaker
               model={streaker}
               status={status}
