@@ -1,0 +1,5 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center_vertical" android:background="@drawable/widget_bg">
+ <TextView android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="walky  ↗" android:textSize="16sp" android:textStyle="bold" android:textColor="#214332" android:paddingBottom="9dp" android:contentDescription="Open Walky"/>
+ <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="We walked" android:textSize="25sp" android:textStyle="bold" android:textColor="#214332"/>
+ <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Tap to log today" android:textSize="12sp" android:textColor="#48613B" android:paddingTop="6dp"/>
+</LinearLayout>
