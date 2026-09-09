@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { loadPhysics } from '@/lib/walky/physics';
+import { animationLoop } from '@/lib/walky/animation-loop';
+import { paperGeometry, updatePaperGeometry } from '@/lib/walky/paper-geometry';
 import { Minus, Plus, Move3D, Wind } from 'lucide-react';
 import {
   ChainPinch,
@@ -21,44 +23,7 @@ const COLORS = [
   '#ee9dba',
   '#ddd3b7',
 ];
-const SEGMENTS = 80,
-  WIDTH = 0.34,
-  THICKNESS = 0.012;
-// A thin rectangular paper ribbon, bent around an oval. Separate inside/outside
-// faces and real cut edges deliberately avoid the rounded tube look of a torus.
-export function paperGeometry(fold = 1, flex = 0) {
-  const positions: number[] = [],
-    uvs: number[] = [],
-    indices: number[] = [];
-  for (let face = 0; face < 4; face++) {
-    for (let i = 0; i <= SEGMENTS; i++) {
-      const a = (i / SEGMENTS) * Math.PI * 2;
-      for (let edge = 0; edge < 2; edge++) {
-        const depth = face < 2 ? (face === 0 ? 1 : -1) : edge ? 1 : -1;
-        const widthSide = face < 2 ? (edge ? 1 : -1) : face === 2 ? 1 : -1;
-        const ripple = flex * Math.sin(a * 3 + widthSide * 0.3);
-        const loopX = Math.sin(a) * (0.42 + (depth * THICKNESS) / 2 + ripple);
-        const loopY = Math.cos(a) * (0.6 + (depth * THICKNESS) / 2 + ripple);
-        positions.push(
-          THREE.MathUtils.lerp((a - Math.PI) * 0.47, loopX, fold),
-          THREE.MathUtils.lerp(0, loopY, fold),
-          (widthSide * WIDTH) / 2 + flex * Math.sin(a * 2),
-        );
-        uvs.push(i / SEGMENTS, edge);
-      }
-      if (i < SEGMENTS) {
-        const n = face * (SEGMENTS + 1) * 2 + i * 2;
-        indices.push(n, n + 2, n + 1, n + 1, n + 2, n + 3);
-      }
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  g.setIndex(indices);
-  g.computeVertexNormals();
-  return g;
-}
+const WIDTH = 0.34;
 function grainTexture() {
   const size = 128,
     bytes = new Uint8Array(size * size * 4);
@@ -77,15 +42,18 @@ function grainTexture() {
 export default function PaperChain({
   count,
   pulse,
+  active,
 }: {
   count: number;
   pulse: number;
+  active: boolean;
 }) {
   const host = useRef<HTMLElement>(null);
   const controller = useRef<{
     setCount: (n: number) => void;
     nudge: () => void;
     zoom: (n: number) => void;
+    setActive: (value: boolean) => void;
   } | null>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
@@ -98,6 +66,11 @@ export default function PaperChain({
   const pointerTilt = useRef(false);
   const stopTilt = useRef<(() => void) | null>(null);
   const initial = useRef(count);
+  const visible = useRef(active);
+  useEffect(() => {
+    visible.current = active;
+    controller.current?.setActive(active);
+  }, [active]);
   const lastPulse = useRef(pulse);
   useEffect(() => {
     initial.current = count;
@@ -185,7 +158,10 @@ export default function PaperChain({
         alpha: true,
         powerPreference: 'low-power',
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      const mobile = window.matchMedia('(pointer: coarse)').matches;
+      renderer.setPixelRatio(
+        Math.min(window.devicePixelRatio, mobile ? 1.5 : 2),
+      );
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFShadowMap;
       renderer.setClearColor('#edf0e9', 0);
@@ -199,7 +175,8 @@ export default function PaperChain({
       const key = new THREE.DirectionalLight('#fff9e9', 3.2);
       key.position.set(-3, 6, 7);
       key.castShadow = true;
-      key.shadow.mapSize.set(2048, 2048);
+      const shadowSize = mobile ? 1024 : 2048;
+      key.shadow.mapSize.set(shadowSize, shadowSize);
       Object.assign(key.shadow.camera, {
         left: -10,
         right: 10,
@@ -273,9 +250,8 @@ export default function PaperChain({
         anchors: RAPIER.RigidBody[] = [],
         pins: THREE.Mesh[] = [],
         wanted = initial.current,
+        renderedCount = wanted,
         clock = 0,
-        raf = 0,
-        previous = performance.now(),
         accumulator = 0,
         dragged: Link | null = null;
       const reduced = window.matchMedia(
@@ -483,6 +459,7 @@ export default function PaperChain({
       const resize = () => {
         const w = element.clientWidth,
           h = element.clientHeight;
+        if (!w || !h) return;
         renderer.setSize(w, h);
         updateCamera();
       };
@@ -622,13 +599,15 @@ export default function PaperChain({
       window.addEventListener('blur', resetPointers);
       window.addEventListener('resize', resetPointers);
       controller.current = {
+        setActive(value) {
+          visible.current = value;
+          syncVisibility();
+        },
         zoom: changeZoom,
         setCount(n) {
           if (wanted === n) return;
-          const add = n > wanted;
           wanted = n;
-          resetPointers();
-          populate(n, add);
+          if (visible.current && !document.hidden) syncCount();
         },
         nudge() {
           for (const link of links)
@@ -637,10 +616,8 @@ export default function PaperChain({
         },
       };
       setReady(true);
-      const frame = (now: number) => {
+      const frame = (_now: number, dt: number) => {
         if (disposed) return;
-        const dt = Math.min((now - previous) / 1000, 0.05);
-        previous = now;
         clock += dt;
         accumulator += dt;
         if (!document.hidden) {
@@ -686,9 +663,7 @@ export default function PaperChain({
             if (link.newLink || link.deformed || Math.abs(flex) > 0.0004) {
               const progress = link.newLink ? Math.min(1, age / 1.15) : 1;
               const smooth = progress * progress * (3 - 2 * progress);
-              const geometry = paperGeometry(smooth, flex);
-              link.mesh.geometry.dispose();
-              link.mesh.geometry = geometry;
+              updatePaperGeometry(link.mesh.geometry, smooth, flex);
               link.mesh.position.z += (1 - smooth) * 1.8;
               if (progress === 1) link.newLink = false;
               link.deformed = Math.abs(flex) > 0.0004;
@@ -696,11 +671,28 @@ export default function PaperChain({
           }
           renderer.render(scene, camera);
         } else accumulator = 0;
-        raf = requestAnimationFrame(frame);
       };
-      raf = requestAnimationFrame(frame);
+      const loop = animationLoop(frame);
+      function syncCount() {
+        if (renderedCount === wanted) return;
+        const add = wanted > renderedCount;
+        renderedCount = wanted;
+        resetPointers();
+        populate(wanted, add);
+      }
+      function syncVisibility() {
+        const playing = visible.current && !document.hidden;
+        if (!playing) {
+          resetPointers();
+          accumulator = 0;
+        } else syncCount();
+        loop.setActive(playing);
+      }
+      document.addEventListener('visibilitychange', syncVisibility);
+      syncVisibility();
       cleanup = () => {
-        cancelAnimationFrame(raf);
+        loop.setActive(false);
+        document.removeEventListener('visibilitychange', syncVisibility);
         observer.disconnect();
         element.removeEventListener('pointerdown', down);
         element.removeEventListener('pointermove', move);
@@ -732,7 +724,8 @@ export default function PaperChain({
         controller.current = null;
       };
     }
-    start().catch(() => {
+    start().catch((error) => {
+      console.error('Paper chain could not start.', error);
       if (!disposed) setFailed(true);
     });
     return () => {
@@ -749,8 +742,8 @@ export default function PaperChain({
       >
         {failed && (
           <p className="canvas-fallback">
-            The paper chain needs WebGL. Your walks are still saved — try the
-            calendar view.
+            The paper chain couldn’t start. Try reloading, or use the calendar
+            view. Your walks are still saved.
           </p>
         )}
       </figure>
