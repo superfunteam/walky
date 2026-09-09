@@ -1,0 +1,6 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="40dp" android:minHeight="40dp"
+    android:targetCellWidth="1" android:targetCellHeight="1" android:resizeMode="none"
+    android:updatePeriodMillis="1800000" android:initialLayout="@layout/walk_button_widget" android:previewLayout="@layout/walk_button_widget"
+    android:previewImage="@drawable/walk_button_widget_preview"
+    android:widgetCategory="home_screen" android:description="@string/widget_button_description"/>

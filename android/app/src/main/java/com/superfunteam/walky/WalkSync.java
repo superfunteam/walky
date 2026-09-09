@@ -6,6 +6,7 @@ import androidx.work.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
 
@@ -80,11 +81,15 @@ public class WalkSync extends Worker {
         WalkState.dequeue(c, date);
       }
       JSONObject s = request("/api/status", "GET", null);
+      var dates = s.getJSONArray("dates");
+      var confirmed = new HashSet<String>();
+      for (int i = 0; i < dates.length(); i++) confirmed.add(dates.getString(i));
       WalkState.prefs(c)
           .edit()
           .putString("statusDate", s.getString("today"))
           .putBoolean("walked", s.getBoolean("walkedToday"))
           .putInt("streak", s.getInt("streak"))
+          .putStringSet("walkDates", confirmed)
           .putString("timezone", s.getString("timezone"))
           .putLong("syncedAt", System.currentTimeMillis())
           .remove("error")
