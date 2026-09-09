@@ -12,7 +12,6 @@ import {
   CalendarDays,
   Link2,
   Settings2,
-  ArrowUpRight,
   Check,
   Heart,
   RotateCcw,
@@ -23,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { dayInZone, summarize, type WalkStatus } from '@/lib/walky/dates';
 import CalendarView from '@/components/walky/calendar-view';
 import Settings from '@/components/walky/settings';
+import WalkButtonIcon from '@/components/walky/walk-button-icon';
 const PaperChain = lazy(() => import('@/components/walky/paper-chain'));
 const EMPTY = () =>
   summarize([], dayInZone('America/Chicago'), 'America/Chicago');
@@ -242,32 +242,16 @@ export default function Home() {
               className={'walk-button ' + (status.walkedToday ? 'is-done' : '')}
               onClick={log}
               disabled={busy || loading || status.walkedToday}
+              aria-busy={busy}
               aria-label={
-                status.walkedToday
-                  ? 'Walk logged for today'
-                  : 'Log our walk today'
+                busy
+                  ? 'Saving our walk'
+                  : status.walkedToday
+                    ? 'Walk logged for today'
+                    : 'Log our walk today'
               }
             >
-              <span className="button-icon">
-                {status.walkedToday ? (
-                  <Check size={65} strokeWidth={2.5} />
-                ) : (
-                  <img src="/walk.svg" alt="" width="76" height="76" />
-                )}
-              </span>
-              <strong>
-                {busy
-                  ? 'Saving…'
-                  : status.walkedToday
-                    ? 'We did it!'
-                    : 'We walked'}
-              </strong>
-              <span>
-                {status.walkedToday
-                  ? 'TODAY IS IN THE BOOKS'
-                  : 'TAP TO MAKE IT COUNT'}{' '}
-                {!status.walkedToday && <ArrowUpRight size={15} />}
-              </span>
+              <WalkButtonIcon done={status.walkedToday} />
             </button>
             <div className="under-button">
               {status.walkedToday ? (
