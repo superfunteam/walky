@@ -1,0 +1,12 @@
+# Create a TRMNL Private Plugin with the Polling strategy.
+# Copy full.liquid into its full-screen markup editor.
+name: Walky
+strategy: polling
+polling_url: https://walky.wims.vc/api/status?key={{ read_key }}
+polling_verb: get
+refresh_interval: 15
+custom_fields:
+  - keyname: read_key
+    field_type: password
+    name: Walky read key
+    description: Copy the read key from Walky Settings. Never use your connection code here.

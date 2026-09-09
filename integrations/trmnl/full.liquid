@@ -1,0 +1,32 @@
+<div class="layout layout--col">
+  <div class="grid grid--cols-2">
+    <div class="item">
+      <div class="meta"><span class="index">W</span></div>
+      <div class="content">
+        <span class="label">Did we walk today?</span>
+        <span class="value value--xxlarge">{% if walkedToday %}WE DID.{% else %}NOT YET.{% endif %}</span>
+        <span class="description">{{ today }} · Just the two of us</span>
+      </div>
+    </div>
+    <div class="item">
+      <div class="content">
+        <span class="label">Our little streak</span>
+        <span class="value value--xxlarge">{{ streak }}</span>
+        <span class="description">days in a row · {{ total }} walks together</span>
+      </div>
+    </div>
+  </div>
+  <div class="flex flex--row gap--large stretch-x" style="justify-content:space-around;padding-top:30px">
+    {% assign weekdays = 'M,T,W,T,F,S,S' | split: ',' %}
+    {% for day in week %}
+      <div class="flex flex--col gap--small">
+        <span class="label">{{ weekdays[forloop.index0] }}</span>
+        <div style="border:2px solid black;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;{% if day.walked %}background:black;color:white;{% endif %}">
+          {% if day.walked %}✓{% elsif day.today %}•{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <span class="description" style="padding-top:24px">{% if walkedToday %}A little fresh air. A little time together.{% else %}Around the block counts, too.{% endif %}</span>
+</div>
+<div class="title_bar"><span class="title">walky</span><span class="instance">Small steps, together.</span></div>
