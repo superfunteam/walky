@@ -2,7 +2,7 @@
 
 One couple. One daily yes. **https://walky.wims.vc**
 
-A Netlify-hosted web app and service, plus a small Android APK with a native one-tap widget. Three home views share the same data: a big button, an editable monthly calendar, and an interactive Three.js paper chain. No GPS, distance, individual scores, or accounts.
+A Netlify-hosted web app and service, plus a small Android APK with a native one-tap widget. A big button, an editable monthly calendar, an interactive Three.js paper chain, and a private Streaker challenge view share the same data. No GPS, distance, individual scores, or accounts.
 
 ## Netlify setup
 
@@ -45,14 +45,45 @@ The read key is separate from the log key. It cannot change anything. Configure 
 
 TRMNL renders a large WE DID / NOT YET status, streak, weekly dots, and total. The device reflects its next refresh, not an instant push.
 
+## Streaker & rewards
+
+Connected browsers get a **Streaker** tab. Choose **A new deal**, name the reward, and pick:
+
+- **Daily streak:** 1–365 consecutive walking days, beginning today. Today's existing walk counts; earlier walks do not. Missing a day resets the current run. Completing the target unlocks the reward even if you later miss a day.
+- **Walk checklist:** 1–30 named walks, such as Mall walk, Lakeside park after dark, and three separate Any walk entries. Checking an item also logs today on the shared calendar. Multiple checklist walks on the same day still make one daily calendar check-in. Unchecking an item leaves the day's walk in place.
+
+Both phones share progress. Finishing a challenge opens a celebration with confetti; each browser can enjoy it once. **Collect our reward** keeps the completed deal in your history. Removing a challenge preserves calendar walks. Correcting a qualifying walk or checklist item can relock an uncollected reward; collected rewards stay collected. The app supports up to 20 uncollected challenges at once.
+
+Challenge data is server-authorized and hidden without the connection code. Existing calendar and logging keys cannot read rewards. No reward text is saved in localStorage; only celebration acknowledgments are stored there.
+
+Copy **Settings → Next reward feed** for a separately scoped read-only URL:
+
+```text
+GET https://walky.wims.vc/api/rewards/next?key=YOUR_REWARD_KEY
+```
+
+The response is `{ "nextReward": null }` when none exists. Otherwise it includes the reward name, kind, progress, target, remaining count, unlock status, and remaining checklist walk names. Earned but uncollected rewards come first, then the closest challenge by completion percentage, with the oldest winning ties. This URL reveals the next private reward to anyone holding it, so only share it with your chosen integration. The connection code also works as a Bearer token.
+
+Owner-authenticated challenge routes (cookie or Bearer connection code):
+
+| Method | Route | Action |
+| --- | --- | --- |
+| GET / POST | `/api/challenges` | Read all deals / create one. |
+| POST / DELETE | `/api/challenges/{id}/items/{itemId}` | Check / uncheck a named walk. |
+| POST | `/api/challenges/{id}/claim` | Collect an unlocked reward. |
+| DELETE | `/api/challenges/{id}` | Retire a deal without removing walks. |
+
+Creation accepts `{ "kind": "streak", "reward": "A week off dishes", "target": 7 }` or `{ "kind": "checklist", "reward": "Date night", "items": ["Mall walk", "Any walk", "Any walk"] }`. Supply an optional UUID `id` to safely retry creation. All reward responses use `Cache-Control: no-store`.
+
 ## MCP
 
 Streamable HTTP at `https://walky.wims.vc/mcp`, authenticated with `Authorization: Bearer WALKY_TOKEN`.
 
 - `walk_status`: read current status and history.
 - `log_walk`: idempotently record today.
+- `next_reward`: read the next private reward and progress, or null.
 
-The official MCP TypeScript SDK handles protocol negotiation and request validation. Compatible clients must support custom Bearer authentication (there is no OAuth discovery flow). The browser also feature-detects the experimental WebMCP API and exposes the same two actions.
+The official MCP TypeScript SDK handles protocol negotiation and request validation. Compatible clients must support custom Bearer authentication (there is no OAuth discovery flow). The browser also feature-detects the experimental WebMCP API and exposes the same three actions, each requiring a connected session.
 
 ## 4 pm roast texts
 
@@ -72,7 +103,7 @@ Download the APK from [GitHub Releases](https://github.com/superfunteam/walky/re
 2. Enter the same `WALKY_TOKEN` connection code.
 3. Tap **Add widget**. Tap the widget once to log a walk. Tap its small wordmark to open the full app.
 
-The native widget uses WorkManager to queue offline taps with the **original local date**, retry when connected, and refresh status periodically. A queued walk is explicitly marked pending; it isn't reported as server-saved before sync. The app wraps the three web views in a hardened HTTPS-only WebView. It does not cache the entire web app offline. The widget's shared status may lag until its next background refresh; Android can defer background work.
+The native widget uses WorkManager to queue offline taps with the **original local date**, retry when connected, and refresh status periodically. A queued walk is explicitly marked pending; it isn't reported as server-saved before sync. The app wraps the web views in a hardened HTTPS-only WebView. It does not cache the entire web app offline. The widget's shared status may lag until its next background refresh; Android can defer background work.
 
 Build locally with JDK 17 and Android SDK 35:
 
@@ -94,9 +125,9 @@ npm test
 npm run build
 ```
 
-The Netlify Vite plugin emulates Functions and Blobs locally at `http://localhost:3000`. Local data lives under ignored `.netlify/`. The paper chain starts with three free links and adds one per logged walk. Starter links do not count as walks or affect streaks or reminders. **Try a sample chain** is an explicitly labelled visual playground and never logs walks. Only the preferred home view uses localStorage.
+The Netlify Vite plugin emulates Functions and Blobs locally at `http://localhost:3000`. Local data lives under ignored `.netlify/`. The paper chain starts with three free links and adds one per logged walk. Starter links do not count as walks or affect streaks or reminders. **Try a sample chain** is an explicitly labelled visual playground and never logs walks. The preferred home view and opaque celebration acknowledgments use localStorage.
 
-API checks cover authentication, scoped keys, future/invalid dates, idempotency, undo, Central time, and reminder deduplication/failures. Android lint and compilation verify packaging; a physical device is still needed to verify launcher behavior and background timing. The paper rendering uses thin flat ribbon geometry, grain, rough materials, alternating linked bodies, joint constraints, drag impulses, and a folding animation. It is a lightweight visual paper approximation with rigid-body dynamics and surface flex, not a full sheet-material simulation. Only the latest visible links are drawn when the history grows; all walk days remain stored.
+API checks cover authentication, scoped keys, future/invalid dates, idempotency, undo, Central time, reminder deduplication/failures, private challenge access, streak resets, checklist retries, and reward collection. Android lint and compilation verify packaging; a physical device is still needed to verify launcher behavior and background timing. The paper rendering uses thin flat ribbon geometry, grain, rough materials, alternating linked bodies, joint constraints, drag impulses, and a folding animation. It is a lightweight visual paper approximation with rigid-body dynamics and surface flex, not a full sheet-material simulation. Only the latest visible links are drawn when the history grows; all walk days remain stored.
 
 The camera frames the current chain closely. Pinch inside the scene to zoom from 65% to 300%, or use the +/− buttons; tap the percentage to reset. Mac trackpad pinches and Ctrl+wheel also zoom the scene. Normal scrolling and browser zoom outside the scene retain their usual behavior.
 

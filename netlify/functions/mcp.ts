@@ -12,6 +12,7 @@ import {
   status,
 } from '../../server/core';
 import { blobStore } from '../../server/store';
+import { challengeFeed } from '../../server/challenges';
 export default (request: Request, context: Context) =>
   handle(async () => {
     if (request.method !== 'POST')
@@ -24,6 +25,25 @@ export default (request: Request, context: Context) =>
     const parsedBody = await body(request);
     const store = blobStore(context.deploy.context);
     const server = new McpServer({ name: 'walky', version: '0.1.0' });
+    server.registerTool(
+      'next_reward',
+      {
+        description:
+          'Read the next unclaimed team reward and challenge progress, or null if none exists. Includes remaining checklist walks and whether the reward is unlocked.',
+        inputSchema: {},
+        annotations: { readOnlyHint: true },
+      },
+      async () => ({
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              nextReward: (await challengeFeed(store, cfg)).nextReward,
+            }),
+          },
+        ],
+      }),
+    );
     server.registerTool(
       'walk_status',
       {
