@@ -94,18 +94,23 @@ public class MainActivity extends Activity {
                 || !(uri.getPath() == null || uri.getPath().isEmpty())) throw new Exception();
             if (token.length() < 32) throw new Exception();
             boolean changed =
-                !address.equals(p.getString("url", ""))
-                    || !token.equals(p.getString("token", ""));
+                !address.equals(p.getString("url", "")) || !token.equals(p.getString("token", ""));
             if (!WalkState.pending(this).isEmpty() && changed) {
               error.setText("Sync pending walks before switching your connection.");
               return;
             }
-            p.edit()
-                .putString("url", address)
-                .putString("token", token)
-                .remove("statusDate")
-                .remove("error")
-                .apply();
+            var settings =
+                p.edit().putString("url", address).putString("token", token).remove("error");
+            if (changed)
+              settings
+                  .remove("statusDate")
+                  .remove("walkDates")
+                  .remove("streak")
+                  .remove("walked")
+                  .remove("syncedAt")
+                  .remove("timezone");
+            settings.apply();
+            WalkWidget.updateAll(this);
             WalkSync.periodic(this);
             WalkSync.enqueue(this);
             if (connectionDialog != null) connectionDialog.dismiss();
@@ -194,11 +199,13 @@ public class MainActivity extends Activity {
     options.setOnClickListener(
         v -> {
           PopupMenu menu = new PopupMenu(this, options);
-          menu.getMenu().add(0, 1, 0, "Add home-screen widget");
-          menu.getMenu().add(0, 2, 1, "Connection");
+          menu.getMenu().add(0, 1, 0, "Add small WALK button");
+          menu.getMenu().add(0, 2, 1, "Add large stats widget");
+          menu.getMenu().add(0, 3, 2, "Connection");
           menu.setOnMenuItemClickListener(
               item -> {
-                if (item.getItemId() == 1) addWidget();
+                if (item.getItemId() == 1) addWidget(WalkButtonWidget.class);
+                else if (item.getItemId() == 2) addWidget(WalkWidget.class);
                 else setup();
                 return true;
               });
@@ -218,10 +225,10 @@ public class MainActivity extends Activity {
         });
   }
 
-  private void addWidget() {
+  private void addWidget(Class<?> provider) {
     var manager = getSystemService(AppWidgetManager.class);
     if (manager.isRequestPinAppWidgetSupported())
-      manager.requestPinAppWidget(new ComponentName(this, WalkWidget.class), null, null);
+      manager.requestPinAppWidget(new ComponentName(this, provider), null, null);
     else
       Toast.makeText(
               this, "Long press your home screen, choose Widgets, then Walky.", Toast.LENGTH_LONG)

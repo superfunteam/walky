@@ -1,0 +1,15 @@
+<resources>
+  <string name="widget_stats_name">Walky · Stats</string>
+  <string name="widget_button_name">Walky · WALK button</string>
+  <string name="widget_stats_description">One tap to log, plus your shared streak, week, and total walks.</string>
+  <string name="widget_button_description">A tiny one-tap WALK button. A clock means queued; a check means logged.</string>
+  <string name="widget_walk">WALK</string>
+  <string name="widget_brand">walky ↗</string>
+  <string name="widget_open">Open Walky</string>
+  <string name="widget_prompt">We walked</string>
+  <string name="widget_tap">Tap to log today</string>
+  <string name="widget_streak">STREAK</string>
+  <string name="widget_week">WEEK</string>
+  <string name="widget_total">TOTAL</string>
+  <string name="widget_unknown">—</string>
+</resources>

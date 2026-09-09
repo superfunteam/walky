@@ -101,7 +101,11 @@ Download the APK from [GitHub Releases](https://github.com/superfunteam/walky/re
 
 1. Open Walky. The service address defaults to `https://walky.wims.vc`.
 2. Enter the same `WALKY_TOKEN` connection code.
-3. Choose **App options → Add home-screen widget** at the bottom. Tap the widget once to log a walk. Tap its small wordmark to open the full app. **Connection** is in the same menu.
+3. At the bottom, open **App options** and choose **Add small WALK button** (1×1) or **Add large stats widget** (3×2, resizable). Both are also listed in your launcher’s widget picker. **Connection** is in the same menu.
+
+The small widget is a solid green button with a white walking icon and **WALK** label. Tap once to log today. Its icon becomes a clock while queued and a check after confirmation. It always logs the current local day when tapped, even if Android has not refreshed yesterday’s checkmark yet; repeated taps count once. The large widget adds your shared current streak, walks this Monday–Sunday week, and total walk days. Tap its wordmark to open the full app. Both widgets update together. Existing large widgets stay in place when upgrading.
+
+Stats use cached, confirmed dates and recalculate for the current local day when the widget refreshes. Pending taps do not inflate the counts. An em dash means the first sync has not completed. The small widget requests one launcher cell in each direction; the actual cell proportions and outer padding depend on your launcher.
 
 The orange asterisk launcher icon has separate adaptive background/foreground layers and an Android 13+ monochrome layer. The artwork stays inside the 66dp safe circle of the 108dp foreground, so launcher masks can crop the background without clipping the asterisk. A vector fallback covers legacy icon consumers. The browser favicon uses the same mark.
 
@@ -113,8 +117,10 @@ Build locally with JDK 17 and Android SDK 35:
 
 ```sh
 cd android
-./gradlew assembleDebug lintDebug
+./gradlew assembleDebug lintDebug testDebugUnitTest
 ```
+
+Native Robolectric tests cover both RemoteViews layouts on Android 8 and 15, one-tap routing, shared queued/confirmed updates, minimum widget bounds, upgrade state, stale checkmark taps, and day/week rollover. They render sample-data PNGs in `android/app/build/widget-previews/` for visual review; `large-ready.png` and `small-ready.png` also supply the older-launcher picker previews in `res/drawable-nodpi/`.
 
 The initial release signing key is stored locally outside the repository in `~/.config/walky/`; keep a private backup. GitHub Actions signing secrets are configured. For a fresh fork, configure repository Actions secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`, then push a `v*` tag. `.github/workflows/release.yml` creates a GitHub Release with `walky.apk` and its SHA-256. Keep the same signing key for future versions; never commit a keystore. Release builds fail if signing credentials are absent. Normal CI uploads a debug APK as an Actions artifact.
 

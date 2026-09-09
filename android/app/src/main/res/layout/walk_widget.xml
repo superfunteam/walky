@@ -1,5 +1,31 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center_vertical" android:background="@drawable/widget_bg">
- <TextView android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="walky  ↗" android:textSize="16sp" android:textStyle="bold" android:textColor="#214332" android:paddingBottom="9dp" android:contentDescription="Open Walky"/>
- <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="We walked" android:textSize="25sp" android:textStyle="bold" android:textColor="#214332"/>
- <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Tap to log today" android:textSize="12sp" android:textColor="#48613B" android:paddingTop="6dp"/>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_vertical" android:padding="10dp"
+    android:background="@drawable/widget_bg">
+  <TextView android:id="@+id/widget_brand" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:text="@string/widget_brand" android:textSize="11sp" android:textStyle="bold"
+      android:textColor="#215741" android:includeFontPadding="false"
+      android:contentDescription="@string/widget_open"/>
+  <TextView android:id="@+id/widget_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:text="@string/widget_prompt" android:textSize="22sp" android:textStyle="bold"
+      android:textColor="#173E32" android:includeFontPadding="false" android:maxLines="1"
+      android:autoSizeTextType="uniform" android:autoSizeMinTextSize="15sp" android:autoSizeMaxTextSize="22sp" android:autoSizeStepGranularity="1sp"/>
+  <TextView android:id="@+id/widget_status" android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:text="@string/widget_tap" android:textSize="11sp" android:textColor="#48613B"
+      android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end"/>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:orientation="horizontal" android:layout_marginTop="4dp" android:baselineAligned="false">
+    <LinearLayout style="@style/WidgetStatColumn">
+      <TextView android:id="@+id/widget_streak" style="@style/WidgetStatValue"/>
+      <TextView style="@style/WidgetStatLabel" android:text="@string/widget_streak"/>
+    </LinearLayout>
+    <LinearLayout style="@style/WidgetStatColumn">
+      <TextView android:id="@+id/widget_week" style="@style/WidgetStatValue"/>
+      <TextView style="@style/WidgetStatLabel" android:text="@string/widget_week"/>
+    </LinearLayout>
+    <LinearLayout style="@style/WidgetStatColumn">
+      <TextView android:id="@+id/widget_total" style="@style/WidgetStatValue"/>
+      <TextView style="@style/WidgetStatLabel" android:text="@string/widget_total"/>
+    </LinearLayout>
+  </LinearLayout>
 </LinearLayout>

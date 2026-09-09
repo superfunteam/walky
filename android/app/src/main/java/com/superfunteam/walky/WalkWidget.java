@@ -7,35 +7,78 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.widget.RemoteViews;
+import java.time.LocalDate;
+import java.util.Collections;
 
 public class WalkWidget extends AppWidgetProvider {
   public static final String LOG = "com.superfunteam.walky.LOG";
 
   public static void updateAll(Context c) {
     var manager = AppWidgetManager.getInstance(c);
-    for (int id : manager.getAppWidgetIds(new ComponentName(c, WalkWidget.class)))
-      update(c, manager, id);
+    for (Class<?> provider : new Class<?>[] {WalkWidget.class, WalkButtonWidget.class}) {
+      boolean compact = provider == WalkButtonWidget.class;
+      for (int id : manager.getAppWidgetIds(new ComponentName(c, provider)))
+        manager.updateAppWidget(id, render(c, compact, WalkState.today(c)));
+    }
   }
 
-  private static void update(Context c, AppWidgetManager manager, int id) {
+  protected boolean isCompact() {
+    return false;
+  }
+
+  static RemoteViews render(Context c, boolean compact, String today) {
     var p = WalkState.prefs(c);
-    String today = WalkState.today(c);
+    WidgetStats stats =
+        p.contains("walkDates")
+            ? new WidgetStats(
+                p.getStringSet("walkDates", Collections.emptySet()), LocalDate.parse(today))
+            : null;
     boolean ready = WalkState.configured(c),
         pending = WalkState.pending(c).contains(today),
-        done = today.equals(p.getString("statusDate", "")) && p.getBoolean("walked", false);
-    var views = new RemoteViews(c.getPackageName(), R.layout.walk_widget);
+        done =
+            stats != null
+                ? stats.walkedToday
+                : today.equals(p.getString("statusDate", "")) && p.getBoolean("walked", false);
+    var views =
+        new RemoteViews(
+            c.getPackageName(), compact ? R.layout.walk_button_widget : R.layout.walk_widget);
     String title =
         !ready ? "Let's connect" : pending ? "Walk queued" : done ? "We did it! ✓" : "We walked";
     String subtitle =
         !ready
             ? "Tap to set up Walky"
             : pending
-                ? "Saved on phone · waiting to sync"
+                ? "On phone · waiting to sync"
                 : done
-                    ? p.getInt("streak", 0) + " day streak · logged today"
+                    ? "Today's walk is in. Nice work."
                     : p.contains("error") ? p.getString("error", "") : "Tap to log today";
-    views.setTextViewText(R.id.widget_title, title);
-    views.setTextViewText(R.id.widget_status, subtitle);
+    String description = title + ". " + subtitle;
+    if (!compact && ready && stats != null)
+      description +=
+          ". "
+              + stats.streak
+              + " day streak. "
+              + stats.weekCount
+              + " of 7 walks this week. "
+              + stats.total
+              + " total walks.";
+    views.setContentDescription(R.id.widget_root, description);
+    if (compact) {
+      views.setImageViewResource(
+          R.id.widget_icon,
+          !ready
+              ? R.drawable.ic_widget_walk
+              : pending
+                  ? R.drawable.ic_widget_pending
+                  : done ? R.drawable.ic_widget_done : R.drawable.ic_widget_walk);
+    } else {
+      views.setTextViewText(R.id.widget_title, title);
+      views.setTextViewText(R.id.widget_status, subtitle);
+      views.setTextViewText(R.id.widget_streak, ready && stats != null ? "" + stats.streak : "—");
+      views.setTextViewText(
+          R.id.widget_week, ready && stats != null ? stats.weekCount + "/7" : "—");
+      views.setTextViewText(R.id.widget_total, ready && stats != null ? "" + stats.total : "—");
+    }
     var open =
         PendingIntent.getActivity(
             c,
@@ -46,16 +89,19 @@ public class WalkWidget extends AppWidgetProvider {
         PendingIntent.getBroadcast(
             c,
             1,
-            new Intent(c, WalkWidget.class).setAction(LOG),
+            new Intent(c, compact ? WalkButtonWidget.class : WalkWidget.class).setAction(LOG),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    views.setOnClickPendingIntent(R.id.widget_root, ready && !done && !pending ? log : open);
-    views.setOnClickPendingIntent(R.id.widget_brand, open);
-    manager.updateAppWidget(id, views);
+    // The one-cell button must still log the current day if the launcher shows yesterday's state.
+    // The API and local queue both deduplicate repeated taps by date.
+    views.setOnClickPendingIntent(
+        R.id.widget_root, ready && (compact || (!done && !pending)) ? log : open);
+    if (!compact) views.setOnClickPendingIntent(R.id.widget_brand, open);
+    return views;
   }
 
   @Override
   public void onUpdate(Context c, AppWidgetManager manager, int[] ids) {
-    for (int id : ids) update(c, manager, id);
+    for (int id : ids) manager.updateAppWidget(id, render(c, isCompact(), WalkState.today(c)));
     WalkSync.periodic(c);
     WalkSync.enqueue(c);
   }
