@@ -24,6 +24,7 @@ import CalendarView from '@/components/walky/calendar-view';
 import Settings from '@/components/walky/settings';
 import WalkButtonIcon from '@/components/walky/walk-button-icon';
 const PaperChain = lazy(() => import('@/components/walky/paper-chain'));
+const STARTER_LINKS = 3;
 const EMPTY = () =>
   summarize([], dayInZone('America/Chicago'), 'America/Chicago');
 export default function Home() {
@@ -183,6 +184,7 @@ export default function Home() {
     'en-US',
     { weekday: 'long', month: 'long', day: 'numeric' },
   );
+  const chainLinks = STARTER_LINKS + status.total;
   return (
     <main className="walky-app">
       <header className="masthead">
@@ -322,8 +324,8 @@ export default function Home() {
                   {demo
                     ? 'A sample chain to play with. Your calendar stays unchanged.'
                     : status.total
-                      ? 'A little collection of time spent together.'
-                      : 'Your first paper link is waiting.'}
+                      ? 'Three to start. One more for every walk together.'
+                      : 'Three links on us. The next one’s yours.'}
                 </p>
               </div>
               <div className="chain-count">
@@ -339,12 +341,12 @@ export default function Home() {
                   </div>
                 }
               >
-                <PaperChain count={demo || status.total} pulse={pulse} />
+                <PaperChain count={demo || chainLinks} pulse={pulse} />
               </Suspense>
               <span className="paper-label">
                 {demo
                   ? 'PLAYGROUND · SAMPLE LINKS'
-                  : status.total > 16
+                  : chainLinks > 16
                     ? 'YOUR LATEST 16 LINKS'
                     : 'THE THINGS WE DO TOGETHER'}
               </span>

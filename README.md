@@ -94,7 +94,7 @@ npm test
 npm run build
 ```
 
-The Netlify Vite plugin emulates Functions and Blobs locally at `http://localhost:3000`. Local data lives under ignored `.netlify/`. Start with empty real data; **Try a sample chain** is an explicitly labelled visual playground and never logs walks. Only the preferred home view uses localStorage.
+The Netlify Vite plugin emulates Functions and Blobs locally at `http://localhost:3000`. Local data lives under ignored `.netlify/`. The paper chain starts with three free links and adds one per logged walk. Starter links do not count as walks or affect streaks or reminders. **Try a sample chain** is an explicitly labelled visual playground and never logs walks. Only the preferred home view uses localStorage.
 
 API checks cover authentication, scoped keys, future/invalid dates, idempotency, undo, Central time, and reminder deduplication/failures. Android lint and compilation verify packaging; a physical device is still needed to verify launcher behavior and background timing. The paper rendering uses thin flat ribbon geometry, grain, rough materials, alternating linked bodies, joint constraints, drag impulses, and a folding animation. It is a lightweight visual paper approximation with rigid-body dynamics and surface flex, not a full sheet-material simulation. Only the latest visible links are drawn when the history grows; all walk days remain stored.
 
