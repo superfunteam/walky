@@ -616,6 +616,7 @@ h1 {
   overflow: hidden;
 }
 .paper-stage {
+  margin: 0;
   height: 365px;
   width: 100%;
   cursor: grab;
@@ -633,12 +634,15 @@ h1 {
   font-size: 10px;
   color: #89937b;
   letter-spacing: 1.6px;
+  pointer-events: none;
 }
 .chain-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 0 25px 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 25px 10px;
   font-size: 12px;
   color: #87937c;
 }
@@ -649,9 +653,52 @@ h1 {
   background: #fff9;
   border: 1px solid #d9dfce;
   border-radius: 30px;
+  min-height: 44px;
   padding: 8px 13px;
   color: #6a7c5d;
   font-size: 12px;
+}
+.scene-motion-controls,
+.scene-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chain-controls button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chain-controls button[aria-pressed='true'] {
+  color: #215741;
+  background: #dce8d6;
+  border-color: #adc1a5;
+}
+.scene-zoom-controls {
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+  background: #fff9;
+  border: 1px solid #d9dfce;
+  border-radius: 30px;
+}
+.scene-zoom-controls button {
+  min-width: 44px;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 8px;
+}
+.scene-zoom-controls .scene-zoom-reset {
+  min-width: 55px;
+  font-variant-numeric: tabular-nums;
+}
+.scene-hint {
+  display: block;
+  margin: 0 25px 18px;
+  color: #697d60;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .chain-bottom {
   display: flex;
@@ -933,13 +980,18 @@ h1 {
     top: 19px;
   }
   .chain-controls {
-    margin: 0 12px 15px;
+    margin: 0 12px 10px;
     gap: 10px;
     font-size: 10px;
+    justify-content: center;
   }
   .chain-controls button {
-    font-size: 11px;
+    font-size: 12px;
     padding: 7px 10px;
+  }
+  .scene-hint {
+    margin: 0 16px 18px;
+    text-align: center;
   }
   .chain-bottom {
     flex-direction: column;

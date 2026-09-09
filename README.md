@@ -98,6 +98,10 @@ The Netlify Vite plugin emulates Functions and Blobs locally at `http://localhos
 
 API checks cover authentication, scoped keys, future/invalid dates, idempotency, undo, Central time, and reminder deduplication/failures. Android lint and compilation verify packaging; a physical device is still needed to verify launcher behavior and background timing. The paper rendering uses thin flat ribbon geometry, grain, rough materials, alternating linked bodies, joint constraints, drag impulses, and a folding animation. It is a lightweight visual paper approximation with rigid-body dynamics and surface flex, not a full sheet-material simulation. Only the latest visible links are drawn when the history grows; all walk days remain stored.
 
+The camera frames the current chain closely. Pinch inside the scene to zoom from 65% to 300%, or use the +/− buttons; tap the percentage to reset. Mac trackpad pinches and Ctrl+wheel also zoom the scene. Normal scrolling and browser zoom outside the scene retain their usual behavior.
+
+Tap **Enable tilt** on a phone and grant motion access if prompted. The first sensor reading calibrates a comfortable holding position, and rotating between portrait and landscape recalibrates. Tilting changes the chain's gravity with smoothing. On Macs, the same control enables pointer tilt over the scene. Missing or denied sensors fall back to dragging and Breeze. Motion is opt-in for each scene visit, and reduced-motion settings reduce its strength. Sensor permissions, null data, cancellation, pinch limits, and axis changes have automated coverage; physical-phone motion and native trackpad pinch still need device testing.
+
 ## A few easy ideas
 
 - Put an NFC sticker by the front door that opens the private log URL.
