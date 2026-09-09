@@ -2,6 +2,16 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import type RAPIER from '@dimforge/rapier3d-compat';
+import { loadPhysics } from '@/lib/walky/physics';
+import { Minus, Plus, Move3D, Wind } from 'lucide-react';
+import {
+  ChainPinch,
+  clampZoom,
+  fitChainDistance,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  startDeviceTilt,
+} from '@/lib/walky/chain-input';
 
 const COLORS = [
   '#fc7948',
@@ -71,18 +81,92 @@ export default function PaperChain({
   count: number;
   pulse: number;
 }) {
-  const host = useRef<HTMLDivElement>(null);
+  const host = useRef<HTMLElement>(null);
   const controller = useRef<{
     setCount: (n: number) => void;
     nudge: () => void;
+    zoom: (n: number) => void;
   } | null>(null);
   const [failed, setFailed] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [tiltMode, setTiltMode] = useState<
+    'off' | 'waiting' | 'device' | 'pointer'
+  >('off');
+  const [tiltMessage, setTiltMessage] = useState('');
+  const tilt = useRef({ x: 0, y: 0 });
+  const pointerTilt = useRef(false);
+  const stopTilt = useRef<(() => void) | null>(null);
   const initial = useRef(count);
-  initial.current = count;
   const lastPulse = useRef(pulse);
   useEffect(() => {
+    initial.current = count;
     controller.current?.setCount(count);
   }, [count]);
+  useEffect(
+    () => () => {
+      stopTilt.current?.();
+      pointerTilt.current = false;
+    },
+    [],
+  );
+  const toggleTilt = () => {
+    stopTilt.current?.();
+    stopTilt.current = null;
+    pointerTilt.current = false;
+    tilt.current = { x: 0, y: 0 };
+    setTiltMessage('');
+    if (tiltMode !== 'off') {
+      setTiltMode('off');
+      return;
+    }
+    if (
+      window.matchMedia('(pointer: fine)').matches &&
+      navigator.maxTouchPoints === 0
+    ) {
+      pointerTilt.current = true;
+      setTiltMode('pointer');
+      return;
+    }
+    const orientation = window.DeviceOrientationEvent as
+      | (typeof DeviceOrientationEvent & {
+          requestPermission?: () => Promise<string>;
+        })
+      | undefined;
+    stopTilt.current = startDeviceTilt(
+      (point) => {
+        tilt.current = point;
+      },
+      (state) => {
+        setTiltMode(
+          state === 'active'
+            ? 'device'
+            : state === 'waiting'
+              ? 'waiting'
+              : 'off',
+        );
+        if (state === 'denied')
+          setTiltMessage(
+            'Motion access was denied. You can still drag the links.',
+          );
+        if (state === 'unavailable')
+          setTiltMessage(
+            'Tilt isn’t available here. Drag the links to make them sway.',
+          );
+      },
+      {
+        events: window,
+        secure: window.isSecureContext,
+        available: !!orientation,
+        angle: () =>
+          window.screen.orientation?.angle ??
+          Number(
+            (window as unknown as { orientation?: number }).orientation ?? 0,
+          ),
+        requestPermission: orientation?.requestPermission?.bind(orientation),
+      },
+    );
+  };
   useEffect(() => {
     if (pulse !== lastPulse.current) {
       controller.current?.nudge();
@@ -93,8 +177,7 @@ export default function PaperChain({
     let disposed = false,
       cleanup = () => {};
     async function start() {
-      const R = (await import('@dimforge/rapier3d-compat')).default;
-      await R.init();
+      const R = await loadPhysics();
       if (disposed || !host.current) return;
       const element = host.current;
       const renderer = new THREE.WebGLRenderer({
@@ -104,7 +187,7 @@ export default function PaperChain({
       });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
       renderer.setClearColor('#edf0e9', 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -112,8 +195,6 @@ export default function PaperChain({
       element.appendChild(renderer.domElement);
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(33, 1, 0.1, 100);
-      camera.position.set(0, 2.4, 12);
-      camera.lookAt(0, -0.2, 0);
       scene.add(new THREE.HemisphereLight('#ffffff', '#a5aa96', 2.3));
       const key = new THREE.DirectionalLight('#fff9e9', 3.2);
       key.position.set(-3, 6, 7);
@@ -163,7 +244,31 @@ export default function PaperChain({
         newLink: boolean;
         deformed: boolean;
       };
-      let viewCenter = 0;
+      let viewCenter = 0,
+        sceneWidth = 2,
+        sceneHeight = 3.5,
+        zoomLevel = 1;
+      function updateCamera() {
+        const w = element.clientWidth,
+          h = element.clientHeight;
+        if (!w || !h) return;
+        camera.aspect = w / h;
+        const distance = fitChainDistance(
+          sceneWidth,
+          sceneHeight,
+          camera.aspect,
+        );
+        camera.position.set(0, viewCenter + distance * 0.09, distance);
+        camera.lookAt(0, viewCenter, 0);
+        camera.zoom = zoomLevel;
+        camera.updateProjectionMatrix();
+      }
+      const changeZoom = (value: number) => {
+        zoomLevel = clampZoom(value);
+        camera.zoom = zoomLevel;
+        camera.updateProjectionMatrix();
+        setZoom(Math.round(zoomLevel * 100) / 100);
+      };
       let links: Link[] = [],
         anchors: RAPIER.RigidBody[] = [],
         pins: THREE.Mesh[] = [],
@@ -231,10 +336,6 @@ export default function PaperChain({
               Math.hypot(span, Math.PI * sag * Math.cos(t * Math.PI)) / 100,
           );
         }
-        camera.position.y = 2.0 - sag * 0.3;
-        viewCenter = -sag * 0.35;
-        camera.lookAt(0, viewCenter, 0);
-
         for (let i = 0; i < amount; i++) {
           const fraction = amount === 1 ? 0.5 : i / (amount - 1),
             goal = fraction * arcSamples[100];
@@ -363,6 +464,16 @@ export default function PaperChain({
           }
         }
         for (let k = 0; k < 90; k++) world.step();
+        const positions = links.map((link) => link.body.translation());
+        const minY = Math.min(...positions.map((p) => p.y));
+        const maxY = Math.max(...positions.map((p) => p.y));
+        viewCenter = (minY + maxY) / 2;
+        sceneWidth =
+          Math.max(...positions.map((p) => p.x)) -
+          Math.min(...positions.map((p) => p.x)) +
+          1.5;
+        sceneHeight = maxY - minY + 1.6;
+        updateCamera();
         if (animate)
           for (const link of links)
             if (link.body.isDynamic())
@@ -373,14 +484,13 @@ export default function PaperChain({
         const w = element.clientWidth,
           h = element.clientHeight;
         renderer.setSize(w, h);
-        camera.aspect = w / h;
-        camera.position.z = camera.aspect < 1 ? 21 : 15;
-        camera.lookAt(0, viewCenter, 0);
-        camera.updateProjectionMatrix();
+        updateCamera();
       };
       const observer = new ResizeObserver(resize);
       observer.observe(element);
       resize();
+      const pinch = new ChainPinch();
+      let gestureZoom: number | null = null;
       const project = (e: PointerEvent) => {
         const r = element.getBoundingClientRect();
         pointer.set(
@@ -390,6 +500,13 @@ export default function PaperChain({
         raycaster.setFromCamera(pointer, camera);
       };
       const down = (e: PointerEvent) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        pinch.start(e.pointerId, { x: e.clientX, y: e.clientY }, zoomLevel);
+        element.setPointerCapture(e.pointerId);
+        if (pinch.blocksDrag) {
+          dragged = null;
+          return;
+        }
         project(e);
         const selected = raycaster.intersectObjects(
           links.map((l) => l.mesh),
@@ -397,11 +514,36 @@ export default function PaperChain({
         )[0];
         if (selected) {
           dragged = links.find((l) => l.mesh === selected.object) ?? null;
-          element.setPointerCapture(e.pointerId);
           element.style.cursor = 'grabbing';
         }
       };
       const move = (e: PointerEvent) => {
+        const nextZoom = pinch.move(e.pointerId, {
+          x: e.clientX,
+          y: e.clientY,
+        });
+        if (nextZoom !== null) {
+          e.preventDefault();
+          dragged = null;
+          changeZoom(nextZoom);
+          return;
+        }
+        if (pinch.blocksDrag) return;
+        if (pointerTilt.current && e.pointerType === 'mouse' && !dragged) {
+          const r = element.getBoundingClientRect();
+          tilt.current = {
+            x: THREE.MathUtils.clamp(
+              ((e.clientX - r.left) / r.width - 0.5) * 2,
+              -1,
+              1,
+            ),
+            y: THREE.MathUtils.clamp(
+              ((e.clientY - r.top) / r.height - 0.5) * 2,
+              -1,
+              1,
+            ),
+          };
+        }
         if (!dragged) return;
         project(e);
         if (raycaster.ray.intersectPlane(dragPlane, hit)) {
@@ -422,19 +564,70 @@ export default function PaperChain({
                 );
         }
       };
-      const up = () => {
+      const up = (e: PointerEvent) => {
+        pinch.end(e.pointerId);
+        if (element.hasPointerCapture(e.pointerId))
+          element.releasePointerCapture(e.pointerId);
         dragged = null;
         element.style.cursor = 'grab';
+      };
+      const leave = () => {
+        if (pointerTilt.current && !dragged) tilt.current = { x: 0, y: 0 };
+      };
+      const resetPointers = () => {
+        pinch.reset();
+        dragged = null;
+        gestureZoom = null;
+        element.style.cursor = 'grab';
+        if (pointerTilt.current) tilt.current = { x: 0, y: 0 };
+      };
+      const wheel = (e: WheelEvent) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+        if (gestureZoom !== null) return;
+        const unit =
+          e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? element.clientHeight : 1;
+        changeZoom(zoomLevel * Math.exp(-e.deltaY * unit * 0.008));
+      };
+      const gestureStart = (e: Event) => {
+        e.preventDefault();
+        dragged = null;
+        gestureZoom = zoomLevel;
+      };
+      const gestureChange = (e: Event) => {
+        e.preventDefault();
+        // Touch PointerEvents already handle mobile pinches; Safari's gesture
+        // events supply the same interaction on a Mac trackpad.
+        if (pinch.blocksDrag || gestureZoom === null) return;
+        changeZoom(gestureZoom * (e as Event & { scale: number }).scale);
+      };
+      const gestureEnd = (e: Event) => {
+        e.preventDefault();
+        gestureZoom = null;
       };
       element.addEventListener('pointerdown', down);
       element.addEventListener('pointermove', move);
       element.addEventListener('pointerup', up);
       element.addEventListener('pointercancel', up);
+      element.addEventListener('lostpointercapture', up);
+      element.addEventListener('pointerleave', leave);
+      element.addEventListener('wheel', wheel, { passive: false });
+      element.addEventListener('gesturestart', gestureStart, {
+        passive: false,
+      });
+      element.addEventListener('gesturechange', gestureChange, {
+        passive: false,
+      });
+      element.addEventListener('gestureend', gestureEnd, { passive: false });
+      window.addEventListener('blur', resetPointers);
+      window.addEventListener('resize', resetPointers);
       controller.current = {
+        zoom: changeZoom,
         setCount(n) {
           if (wanted === n) return;
           const add = n > wanted;
           wanted = n;
+          resetPointers();
           populate(n, add);
         },
         nudge() {
@@ -443,6 +636,7 @@ export default function PaperChain({
               link.body.applyImpulse({ x: 0.009, y: 0.003, z: 0.008 }, true);
         },
       };
+      setReady(true);
       const frame = (now: number) => {
         if (disposed) return;
         const dt = Math.min((now - previous) / 1000, 0.05);
@@ -450,6 +644,30 @@ export default function PaperChain({
         clock += dt;
         accumulator += dt;
         if (!document.hidden) {
+          const input = tilt.current;
+          const easing = 1 - Math.exp(-dt * 7);
+          const strength = reduced ? 0.45 : 1;
+          const gravity = {
+            x: THREE.MathUtils.lerp(
+              world.gravity.x,
+              input.x * 6 * strength,
+              easing,
+            ),
+            y: -9.81,
+            z: THREE.MathUtils.lerp(
+              world.gravity.z,
+              input.y * 2.5 * strength,
+              easing,
+            ),
+          };
+          if (
+            Math.abs(gravity.x - world.gravity.x) +
+              Math.abs(gravity.z - world.gravity.z) >
+            0.002
+          ) {
+            world.gravity = gravity;
+            for (const link of links) link.body.wakeUp();
+          }
           while (accumulator >= 1 / 60) {
             world.step();
             accumulator -= 1 / 60;
@@ -488,12 +706,21 @@ export default function PaperChain({
         element.removeEventListener('pointermove', move);
         element.removeEventListener('pointerup', up);
         element.removeEventListener('pointercancel', up);
+        element.removeEventListener('lostpointercapture', up);
+        element.removeEventListener('pointerleave', leave);
+        element.removeEventListener('wheel', wheel);
+        element.removeEventListener('gesturestart', gestureStart);
+        element.removeEventListener('gesturechange', gestureChange);
+        element.removeEventListener('gestureend', gestureEnd);
+        window.removeEventListener('blur', resetPointers);
+        window.removeEventListener('resize', resetPointers);
         scene.traverse((o) => {
           if (o instanceof THREE.Mesh) {
             o.geometry.dispose();
             if (!materials.includes(o.material as THREE.MeshStandardMaterial)) {
               const m = o.material;
-              Array.isArray(m) ? m.forEach((x) => x.dispose()) : m.dispose();
+              if (Array.isArray(m)) m.forEach((x) => x.dispose());
+              else m.dispose();
             }
           }
         });
@@ -514,18 +741,83 @@ export default function PaperChain({
     };
   }, []);
   return (
-    <div
-      ref={host}
-      className="paper-stage"
-      role="img"
-      aria-label={`A paper chain with ${count} links. Drag to make it sway.`}
-    >
-      {failed && (
-        <p className="canvas-fallback">
-          The paper chain needs WebGL. Your walks are still saved — try
-          the calendar view.
-        </p>
-      )}
-    </div>
+    <>
+      <figure
+        ref={host}
+        className="paper-stage"
+        aria-label={`A paper chain with ${count} links. Drag to make it sway. Pinch to zoom.`}
+      >
+        {failed && (
+          <p className="canvas-fallback">
+            The paper chain needs WebGL. Your walks are still saved — try the
+            calendar view.
+          </p>
+        )}
+      </figure>
+      <div className="chain-controls">
+        <div className="scene-motion-controls">
+          <button
+            type="button"
+            onClick={toggleTilt}
+            disabled={!ready || failed}
+            aria-pressed={tiltMode !== 'off'}
+          >
+            <Move3D size={16} />
+            {tiltMode === 'device'
+              ? 'Tilt on'
+              : tiltMode === 'pointer'
+                ? 'Pointer tilt'
+                : tiltMode === 'waiting'
+                  ? 'Waiting…'
+                  : 'Enable tilt'}
+          </button>
+          <button
+            type="button"
+            onClick={() => controller.current?.nudge()}
+            disabled={!ready || failed}
+          >
+            <Wind size={16} /> Breeze
+          </button>
+        </div>
+        <fieldset className="scene-zoom-controls" aria-label="Scene zoom">
+          <button
+            type="button"
+            onClick={() => controller.current?.zoom(zoom / 1.2)}
+            disabled={!ready || failed || zoom <= MIN_ZOOM}
+            aria-label="Zoom out"
+          >
+            <Minus size={16} />
+          </button>
+          <button
+            type="button"
+            className="scene-zoom-reset"
+            onClick={() => controller.current?.zoom(1)}
+            disabled={!ready || failed}
+            aria-label={`Reset zoom. Current zoom ${Math.round(zoom * 100)} percent.`}
+            title="Reset zoom"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={() => controller.current?.zoom(zoom * 1.2)}
+            disabled={!ready || failed || zoom >= MAX_ZOOM}
+            aria-label="Zoom in"
+          >
+            <Plus size={16} />
+          </button>
+        </fieldset>
+      </div>
+      <output className="scene-hint">
+        {tiltMessage ||
+          (tiltMode === 'waiting'
+            ? 'Hold your phone comfortably. Waiting for motion…'
+            : tiltMode === 'device'
+              ? 'Tilt your phone to sway. Pinch to zoom.'
+              : tiltMode === 'pointer'
+                ? 'Move your pointer over the links to tilt. Pinch to zoom.'
+                : 'Drag to sway. Pinch to zoom.')}
+      </output>
+    </>
   );
 }

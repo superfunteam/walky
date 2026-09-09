@@ -15,7 +15,6 @@ import {
   Check,
   Heart,
   RotateCcw,
-  Wind,
   Sparkles,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -350,12 +349,6 @@ export default function Home() {
                     ? 'YOUR LATEST 16 LINKS'
                     : 'THE THINGS WE DO TOGETHER'}
               </span>
-              <div className="chain-controls">
-                <button onClick={() => setPulse((n) => n + 1)}>
-                  <Wind size={16} /> A little breeze
-                </button>
-                <span>Drag a link. Let it sway.</span>
-              </div>
             </div>
             <div className="chain-bottom">
               <p>
